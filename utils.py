@@ -1,5 +1,5 @@
 # Add your utilities or helper functions to this file.
-
+import torch
 import os
 from dotenv import load_dotenv, find_dotenv
 from io import StringIO, BytesIO
@@ -335,6 +335,61 @@ def bt_embedding_from_prediction_guard(prompt, base64_image):
         input=[message]
     )
     return response['data'][0]['embedding']
+
+
+from PIL import Image
+import base64
+from io import BytesIO
+import torch
+
+def get_embedding(model, processor, image_input, caption):
+    # Check if the input is a base64-encoded image string
+    if isinstance(image_input, str) and image_input.startswith('/9j/'):  # Common JPEG base64 prefix
+        # Decode the base64 string
+        image_data = base64.b64decode(image_input)
+        image = Image.open(BytesIO(image_data))
+    else:
+        # Assume it's a file path and load the image from the path
+        image = Image.open(image_input)
+
+    # Preprocess the image and text
+    inputs = processor(text=caption, images=image, return_tensors="pt")
+
+    # Get the output embeddings from the model
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    # Debug: Check available keys in outputs
+    print("Output keys:", outputs.keys())
+
+    # Extract the embedding (adjust based on your model's output structure)
+    embedding = outputs.get("image_embeds")  # Adjust if necessary
+    if embedding is None:
+        raise ValueError("No embeddings found in the output!")
+
+    return embedding.squeeze().numpy()
+
+
+# def get_embedding(model, processor, image_path, caption):
+#     # Load and process the image
+#     image = Image.open(image_path)
+#
+#     # Preprocess the image and text
+#     inputs = processor(text=caption, images=image, return_tensors="pt")
+#
+#     # Get the output embeddings from the model
+#     with torch.no_grad():
+#         outputs = model(**inputs)
+#
+#     # Debug: Check available keys in outputs
+#     print("Output keys:", outputs.keys())
+#
+#     # Extract the embedding (choose based on available keys)
+#     embedding = outputs.get("image_embeds")  # Adjust based on your requirement
+#     if embedding is None:
+#         raise ValueError("No embeddings found in the output!")
+#
+#     return embedding.squeeze().numpy()  #
 
 
 def load_json_file(file_path):
